@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{{ attraction.name }} — SL·Explore{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:860px;">
+
+  <!-- Back link -->
+  <a href="/" class="text-decoration-none text-muted d-inline-flex align-items-center gap-1 mb-3"
+     style="font-size:.88rem;">
+    <i class="bi bi-arrow-left"></i> All Attractions
+  </a>
+
+  <!-- Main detail card -->
+  <div class="detail-card">
+
+    <!-- Admin action bar -->
+    {% if current_user and current_user.is_admin %}
+    <div class="admin-action-bar mb-3">
+      <span class="badge-admin me-2"><i class="bi bi-shield-check me-1"></i>Admin</span>
+      <a href="/attraction/{{ attraction.id }}/edit" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-pencil me-1"></i>Edit
+      </a>
+      <form method="post" action="/attraction/{{ attraction.id }}/delete" class="d-inline ms-2"
+            onsubmit="return confirm('Permanently delete \'{{ attraction.name }}\'?')">
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <h1>{{ attraction.name }}</h1>
+
+    <!-- Meta chips -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <span class="chip"><i class="bi bi-map"></i>{{ attraction.province }}</span>
+      <span class="chip chip-green"><i class="bi bi-geo"></i>{{ attraction.district }}</span>
+      {% if attraction.latitude and attraction.longitude %}
+        <span class="chip chip-orange"><i class="bi bi-pin-map"></i>GPS Available</span>
+      {% endif %}
+    </div>
+
+    <!-- Info rows -->
+    <div class="info-row">
+      <span class="icon"><i class="bi bi-person"></i></span>
+      Added by <strong class="ms-1">{{ attraction.user.email }}</strong>
+    </div>
+    <div class="info-row">
+      <span class="icon"><i class="bi bi-calendar3"></i></span>
+      {{ attraction.created_at.strftime('%B %d, %Y') }}
+    </div>
+
+    {% if attraction.latitude and attraction.longitude %}
+    <div class="info-row mt-1">
+      <span class="icon"><i class="bi bi-crosshair2"></i></span>
+      <span class="coords-box">
+        {{ "%.6f"|format(attraction.latitude) }}, {{ "%.6f"|format(attraction.longitude) }}
+      </span>
+      <a href="https://www.google.com/maps?q={{ attraction.latitude }},{{ attraction.longitude }}"
+         target="_blank" rel="noopener"
+         class="ms-2 text-decoration-none" style="font-size:.82rem; color:var(--blue);">
+        <i class="bi bi-box-arrow-up-right me-1"></i>View on Maps
+      </a>
+    </div>
+    {% endif %}
+
+    <hr class="my-3" />
+
+    <!-- Description -->
+    <p style="font-size:.97rem; line-height:1.7; white-space:pre-line;">{{ attraction.description }}</p>
+
+    <!-- Image gallery -->
+    {% if attraction.images %}
+    <div class="gallery-grid">
+      {% for img in attraction.images %}
+        <a href="/static/{{ img.image_path }}" target="_blank" rel="noopener">
+          <img src="/static/{{ img.image_path }}" alt="Photo {{ loop.index }}" />
+        </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-3 text-muted"
+         style="background:#f8f9fa; border-radius:8px; font-size:.88rem;">
+      <i class="bi bi-image fs-3 d-block mb-1 opacity-50"></i>No photos uploaded
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Comments section -->
+  <div class="detail-card" id="comments">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h4 class="mb-0 fw-bold" style="font-size:1.1rem;">
+        <i class="bi bi-chat-dots me-2" style="color:var(--blue);"></i>Comments
+        <span class="badge ms-1"
+              style="background:#e8f0fe; color:var(--blue); font-size:.72rem; border-radius:10px; padding:.2em .65em; vertical-align:middle;">
+          {{ attraction.comments | length }}
+        </span>
+      </h4>
+    </div>
+
+    {% if attraction.comments %}
+      <ul class="comment-list mb-4">
+        {% for comment in attraction.comments %}
+        <li class="comment-item">
+          <div>
+            <span class="comment-author">{{ comment.user.email }}</span>
+            <span class="comment-time">{{ comment.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+          </div>
+          <p class="comment-body mb-0">{{ comment.content }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted mb-4" style="font-size:.9rem;">
+        No comments yet. Be the first to share your thoughts!
+      </p>
+    {% endif %}
+
+    {% if current_user %}
+      <form method="post" action="/attraction/{{ attraction.id }}/comment" novalidate>
+        <label for="comment-content" class="form-label">Leave a comment</label>
+        <textarea class="form-control mb-2" id="comment-content" name="content"
+                  rows="3" placeholder="Share your experience…" required></textarea>
+        <button type="submit" class="btn btn-primary btn-sm px-3">
+          <i class="bi bi-send me-1"></i>Post Comment
+        </button>
+      </form>
+    {% else %}
+      <div class="alert alert-light border" role="alert" style="font-size:.88rem;">
+        <a href="/login" style="color:var(--blue); font-weight:600;">Sign in</a> to leave a comment.
+      </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}

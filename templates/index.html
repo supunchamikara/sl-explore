@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Home — SL·Explore{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <h1><i class="bi bi-globe-asia-australia me-2"></i>Sri Lanka Tourist Attractions</h1>
+    <p>Discover breathtaking places across the Pearl of the Indian Ocean</p>
+    {% if current_user %}
+      <a href="/add" class="btn fw-bold px-4 py-2" style="border-radius:24px; background:#ffffff; color:#2f3e46; border:2px solid #2f3e46;">
+        <i class="bi bi-plus-lg me-1"></i>Add an Attraction
+      </a>
+    {% else %}
+      <a href="/register" class="btn btn-light fw-bold px-4 py-2 me-2" style="border-radius:24px; color:var(--blue);">
+        Get Started
+      </a>
+      <a href="/login" class="btn btn-outline-light px-4 py-2" style="border-radius:24px;">
+        Login
+      </a>
+    {% endif %}
+  </div>
+</section>
+
+<main class="container py-4">
+
+  <!-- ===== FILTER BAR ===== -->
+  <div class="filter-bar mb-4">
+    <form method="get" action="/" class="filter-form" id="filterForm">
+
+      <div class="filter-group">
+        <label class="filter-label"><i class="bi bi-map me-1"></i>Province</label>
+        <select name="province" id="f-province" class="form-select form-select-sm filter-select"
+                onchange="onProvinceChange(this)">
+          <option value="">All Provinces</option>
+          {% for p in provinces %}
+            <option value="{{ p }}" {% if selected_province == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label"><i class="bi bi-geo me-1"></i>District</label>
+        <select name="district" id="f-district" class="form-select form-select-sm filter-select"
+                {% if not selected_province %}disabled{% endif %}>
+          <option value="">All Districts</option>
+          {% for d in districts_for_province %}
+            <option value="{{ d }}" {% if selected_district == d %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary btn-sm px-3">
+          <i class="bi bi-funnel me-1"></i>Filter
+        </button>
+        {% if selected_province or selected_district %}
+          <a href="/" class="btn btn-outline-secondary btn-sm px-3">
+            <i class="bi bi-x-lg me-1"></i>Clear
+          </a>
+        {% endif %}
+      </div>
+
+    </form>
+
+    <!-- Active filter chips -->
+    {% if selected_province or selected_district %}
+    <div class="filter-chips">
+      {% if selected_province %}
+        <span class="chip">
+          <i class="bi bi-map"></i>{{ selected_province }}
+        </span>
+      {% endif %}
+      {% if selected_district %}
+        <span class="chip chip-green">
+          <i class="bi bi-geo"></i>{{ selected_district }}
+        </span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ===== RESULTS HEADER ===== -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="results-info">
+      {% if total == 0 %}
+        <span class="text-muted" style="font-size:.9rem;">No attractions found</span>
+      {% else %}
+        {% set start = (page - 1) * per_page + 1 %}
+        {% set end = [page * per_page, total] | min %}
+        <span style="font-size:.9rem; color:var(--muted);">
+          Showing <strong style="color:var(--text);">{{ start }}–{{ end }}</strong>
+          of <strong style="color:var(--text);">{{ total }}</strong> attraction{{ 's' if total != 1 else '' }}
+        </span>
+      {% endif %}
+    </div>
+    {% if current_user %}
+      <a href="/add" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Add New
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- ===== CARD GRID ===== -->
+  {% if attractions %}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-4">
+      {% for attr in attractions %}
+      <div class="col">
+        <a href="/attraction/{{ attr.id }}" class="text-decoration-none">
+          <article class="attr-card">
+
+            <!-- Image area -->
+            <div class="attr-card__img-wrap">
+              {% if attr.images %}
+                <img src="/static/{{ attr.images[0].image_path }}"
+                     alt="{{ attr.name }}"
+                     class="attr-card__img" />
+              {% else %}
+                <div class="attr-card__img-placeholder">
+                  <i class="bi bi-image"></i>
+                </div>
+              {% endif %}
+
+              <!-- Province badge overlaid on image -->
+              <span class="attr-card__province-badge">
+                <i class="bi bi-map-fill me-1"></i>{{ attr.province }}
+              </span>
+
+              <!-- GPS pin if available -->
+              {% if attr.latitude and attr.longitude %}
+                <span class="attr-card__gps-badge">
+                  <i class="bi bi-pin-map-fill"></i>
+                </span>
+              {% endif %}
+            </div>
+
+            <!-- Card body -->
+            <div class="attr-card__body">
+              <h3 class="attr-card__title">{{ attr.name }}</h3>
+              <p class="attr-card__desc">{{ attr.description }}</p>
+            </div>
+
+            <!-- Card footer -->
+            <div class="attr-card__footer">
+              <div class="attr-card__meta">
+                <span class="attr-card__district">
+                  <i class="bi bi-geo-alt-fill"></i>{{ attr.district }}
+                </span>
+              </div>
+              <div class="attr-card__stats">
+                {% if attr.comments %}
+                  <span class="attr-stat" title="Comments">
+                    <i class="bi bi-chat"></i>{{ attr.comments | length }}
+                  </span>
+                {% endif %}
+                {% if attr.images %}
+                  <span class="attr-stat" title="Photos">
+                    <i class="bi bi-images"></i>{{ attr.images | length }}
+                  </span>
+                {% endif %}
+                <span class="attr-stat attr-stat--date" title="Added on">
+                  <i class="bi bi-calendar3"></i>{{ attr.created_at.strftime('%b %d, %Y') }}
+                </span>
+              </div>
+            </div>
+
+          </article>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ===== PAGINATION ===== -->
+    {% if total_pages > 1 %}
+    <nav class="pagination-wrap mt-5" aria-label="Pagination">
+
+      {# Build base query string without page param #}
+      {% set base_qs %}{% if selected_province %}province={{ selected_province | urlencode }}&{% endif %}{% if selected_district %}district={{ selected_district | urlencode }}&{% endif %}{% endset %}
+
+      <ul class="pagination-list">
+
+        <!-- Prev -->
+        <li>
+          {% if page > 1 %}
+            <a href="/?{{ base_qs }}page={{ page - 1 }}" class="pg-btn pg-btn--nav" aria-label="Previous">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          {% else %}
+            <span class="pg-btn pg-btn--nav pg-btn--disabled"><i class="bi bi-chevron-left"></i></span>
+          {% endif %}
+        </li>
+
+        <!-- Page numbers -->
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+            <li>
+              <a href="/?{{ base_qs }}page={{ p }}"
+                 class="pg-btn {% if p == page %}pg-btn--active{% endif %}">
+                {{ p }}
+              </a>
+            </li>
+          {% elif p == page - 3 or p == page + 3 %}
+            <li><span class="pg-ellipsis">…</span></li>
+          {% endif %}
+        {% endfor %}
+
+        <!-- Next -->
+        <li>
+          {% if page < total_pages %}
+            <a href="/?{{ base_qs }}page={{ page + 1 }}" class="pg-btn pg-btn--nav" aria-label="Next">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          {% else %}
+            <span class="pg-btn pg-btn--nav pg-btn--disabled"><i class="bi bi-chevron-right"></i></span>
+          {% endif %}
+        </li>
+
+      </ul>
+
+      <p class="pagination-info">Page {{ page }} of {{ total_pages }}</p>
+    </nav>
+    {% endif %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="icon"><i class="bi bi-search"></i></div>
+      {% if selected_province or selected_district %}
+        <h4 class="fw-bold mb-2">No results found</h4>
+        <p class="mb-4">Try a different province or district, or clear the filter.</p>
+        <a href="/" class="btn btn-primary px-4">
+          <i class="bi bi-x-lg me-1"></i>Clear Filters
+        </a>
+      {% else %}
+        <h4 class="fw-bold mb-2">No attractions yet</h4>
+        <p class="mb-4">Be the first to add a tourist attraction in Sri Lanka!</p>
+        {% if current_user %}
+          <a href="/add" class="btn btn-primary px-4">
+            <i class="bi bi-plus-lg me-1"></i>Add the First One
+          </a>
+        {% else %}
+          <a href="/register" class="btn btn-primary px-4">Create an Account</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% endif %}
+
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const provincesDistricts = {{ provinces_districts_json | safe }};
+
+  function onProvinceChange(sel) {
+    const province = sel.value;
+    const distSelect = document.getElementById('f-district');
+    distSelect.innerHTML = '<option value="">All Districts</option>';
+    if (province && provincesDistricts[province]) {
+      provincesDistricts[province].forEach(function(d) {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        distSelect.appendChild(opt);
+      });
+      distSelect.disabled = false;
+    } else {
+      distSelect.disabled = true;
+    }
+    // Reset district if province changed
+    distSelect.value = '';
+  }
+</script>
+{% endblock %}

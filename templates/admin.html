@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — SL·Explore{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+
+  <!-- ── Admin Header ── -->
+  <div class="admin-header">
+    <div class="container-fluid px-4">
+      <div class="d-flex align-items-center justify-content-between py-3">
+        <div>
+          <h1 class="admin-title mb-0">
+            <i class="bi bi-shield-check me-2"></i>Admin Panel
+          </h1>
+          <p class="text-muted mb-0" style="font-size:.85rem;">Manage all tourist attractions</p>
+        </div>
+        <a href="/add" class="btn btn-primary">
+          <i class="bi bi-plus-lg me-1"></i>Add Attraction
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid px-4 py-4">
+
+    <!-- ── Stats Cards ── -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-card__icon" style="background:#e8f0fe; color:var(--blue);">
+            <i class="bi bi-geo-alt-fill"></i>
+          </div>
+          <div>
+            <div class="stat-card__value">{{ stats.total_attractions }}</div>
+            <div class="stat-card__label">Attractions</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-card__icon" style="background:#e6f4ea; color:#137333;">
+            <i class="bi bi-people-fill"></i>
+          </div>
+          <div>
+            <div class="stat-card__value">{{ stats.total_users }}</div>
+            <div class="stat-card__label">Registered Users</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-card__icon" style="background:#fce8b2; color:#b06000;">
+            <i class="bi bi-chat-dots-fill"></i>
+          </div>
+          <div>
+            <div class="stat-card__value">{{ stats.total_comments }}</div>
+            <div class="stat-card__label">Comments</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card">
+          <div class="stat-card__icon" style="background:#fce8e6; color:#c5221f;">
+            <i class="bi bi-images"></i>
+          </div>
+          <div>
+            <div class="stat-card__value">{{ stats.total_images }}</div>
+            <div class="stat-card__label">Photos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Filter Bar ── -->
+    <div class="filter-bar mb-3">
+      <form method="get" action="/admin" class="filter-form">
+        <div class="filter-group">
+          <label class="filter-label"><i class="bi bi-map me-1"></i>Province</label>
+          <select name="province" id="f-province" class="form-select form-select-sm filter-select"
+                  onchange="onProvinceChange(this)">
+            <option value="">All Provinces</option>
+            {% for p in provinces %}
+              <option value="{{ p }}" {% if selected_province == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label"><i class="bi bi-geo me-1"></i>District</label>
+          <select name="district" id="f-district" class="form-select form-select-sm filter-select"
+                  {% if not selected_province %}disabled{% endif %}>
+            <option value="">All Districts</option>
+            {% for d in districts_for_province %}
+              <option value="{{ d }}" {% if selected_district == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-primary btn-sm px-3">
+            <i class="bi bi-funnel me-1"></i>Filter
+          </button>
+          {% if selected_province or selected_district %}
+            <a href="/admin" class="btn btn-outline-secondary btn-sm px-3">
+              <i class="bi bi-x-lg me-1"></i>Clear
+            </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <!-- ── Results count ── -->
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      {% set start = (page - 1) * per_page + 1 %}
+      {% set end = [page * per_page, total] | min %}
+      <p class="text-muted mb-0" style="font-size:.85rem;">
+        {% if total > 0 %}
+          Showing <strong>{{ start }}–{{ end }}</strong> of <strong>{{ total }}</strong> attractions
+        {% else %}
+          No attractions found
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- ── Attractions Table ── -->
+    <div class="admin-table-card">
+      {% if attractions %}
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width:50px;">#</th>
+              <th style="width:60px;">Photo</th>
+              <th>Name</th>
+              <th>Province</th>
+              <th>District</th>
+              <th>Added By</th>
+              <th>GPS</th>
+              <th>Date</th>
+              <th style="width:130px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attr in attractions %}
+            <tr>
+              <td class="text-muted" style="font-size:.8rem;">{{ attr.id }}</td>
+              <td>
+                {% if attr.images %}
+                  <img src="/static/{{ attr.images[0].image_path }}"
+                       class="admin-thumb" alt="{{ attr.name }}" />
+                {% else %}
+                  <div class="admin-thumb-placeholder">
+                    <i class="bi bi-image"></i>
+                  </div>
+                {% endif %}
+              </td>
+              <td>
+                <a href="/attraction/{{ attr.id }}" class="admin-name-link" target="_blank">
+                  {{ attr.name }}
+                </a>
+                {% if attr.comments %}
+                  <span class="ms-1" style="font-size:.72rem; color:var(--muted);">
+                    <i class="bi bi-chat"></i>{{ attr.comments | length }}
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="chip" style="font-size:.72rem;">{{ attr.province }}</span>
+              </td>
+              <td>
+                <span class="chip chip-green" style="font-size:.72rem;">{{ attr.district }}</span>
+              </td>
+              <td style="font-size:.8rem; color:var(--muted);">{{ attr.user.email }}</td>
+              <td>
+                {% if attr.latitude and attr.longitude %}
+                  <span class="chip chip-orange" style="font-size:.7rem;">
+                    <i class="bi bi-pin-map-fill"></i>Yes
+                  </span>
+                {% else %}
+                  <span class="text-muted" style="font-size:.8rem;">—</span>
+                {% endif %}
+              </td>
+              <td style="font-size:.78rem; color:var(--muted);">
+                {{ attr.created_at.strftime('%b %d, %Y') }}
+              </td>
+              <td>
+                <div class="admin-actions">
+                  <a href="/attraction/{{ attr.id }}/edit" class="btn-admin-edit" title="Edit">
+                    <i class="bi bi-pencil-fill"></i>
+                  </a>
+                  <form method="post" action="/attraction/{{ attr.id }}/delete"
+                        onsubmit="return confirm('Delete \'{{ attr.name }}\'? This cannot be undone.')">
+                    <button type="submit" class="btn-admin-delete" title="Delete">
+                      <i class="bi bi-trash-fill"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── Pagination ── -->
+      {% if total_pages > 1 %}
+      <div class="px-4 py-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
+        {% set base_qs %}{% if selected_province %}province={{ selected_province | urlencode }}&{% endif %}{% if selected_district %}district={{ selected_district | urlencode }}&{% endif %}{% endset %}
+        <p class="text-muted mb-0" style="font-size:.82rem;">Page {{ page }} of {{ total_pages }}</p>
+        <nav>
+          <ul class="pagination-list">
+            <li>
+              {% if page > 1 %}
+                <a href="/admin?{{ base_qs }}page={{ page - 1 }}" class="pg-btn pg-btn--nav"><i class="bi bi-chevron-left"></i></a>
+              {% else %}
+                <span class="pg-btn pg-btn--nav pg-btn--disabled"><i class="bi bi-chevron-left"></i></span>
+              {% endif %}
+            </li>
+            {% for p in range(1, total_pages + 1) %}
+              {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                <li>
+                  <a href="/admin?{{ base_qs }}page={{ p }}"
+                     class="pg-btn {% if p == page %}pg-btn--active{% endif %}">{{ p }}</a>
+                </li>
+              {% elif p == page - 3 or p == page + 3 %}
+                <li><span class="pg-ellipsis">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li>
+              {% if page < total_pages %}
+                <a href="/admin?{{ base_qs }}page={{ page + 1 }}" class="pg-btn pg-btn--nav"><i class="bi bi-chevron-right"></i></a>
+              {% else %}
+                <span class="pg-btn pg-btn--nav pg-btn--disabled"><i class="bi bi-chevron-right"></i></span>
+              {% endif %}
+            </li>
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="empty-state py-5">
+        <div class="icon"><i class="bi bi-inbox"></i></div>
+        <h5 class="fw-bold mb-1">No attractions found</h5>
+        <p class="mb-0 text-muted" style="font-size:.9rem;">Try adjusting your filters or add a new attraction.</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const provincesDistricts = {{ provinces_districts_json | safe }};
+  function onProvinceChange(sel) {
+    const province = sel.value;
+    const distSelect = document.getElementById('f-district');
+    distSelect.innerHTML = '<option value="">All Districts</option>';
+    if (province && provincesDistricts[province]) {
+      provincesDistricts[province].forEach(function(d) {
+        const opt = document.createElement('option');
+        opt.value = d; opt.textContent = d;
+        distSelect.appendChild(opt);
+      });
+      distSelect.disabled = false;
+    } else {
+      distSelect.disabled = true;
+    }
+    distSelect.value = '';
+  }
+</script>
+{% endblock %}

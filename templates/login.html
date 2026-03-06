@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Login — SL·Explore{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="auth-card">
+
+    <div class="text-center mb-4">
+      <div style="font-size:2.4rem; color:var(--blue);"><i class="bi bi-geo-alt-fill"></i></div>
+      <h2>Welcome back</h2>
+      <p class="text-muted" style="font-size:.9rem;">Sign in to your SL·Explore account</p>
+    </div>
+
+    {% if error %}
+      <div class="alert alert-danger d-flex align-items-center gap-2 py-2" role="alert">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span>{{ error }}</span>
+      </div>
+    {% endif %}
+
+    <form method="post" action="/login" novalidate>
+
+      <div class="mb-3">
+        <label for="email" class="form-label">Email / Username</label>
+        <input type="text" class="form-control" id="email" name="email"
+               placeholder="you@example.com or admin" required autofocus />
+      </div>
+
+      <div class="mb-4">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" name="password"
+               placeholder="Your password" required />
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+      </button>
+
+    </form>
+
+    <hr class="my-4" />
+
+    <p class="text-center text-muted mb-0" style="font-size:.88rem;">
+      Don't have an account?
+      <a href="/register" style="color:var(--blue); font-weight:600;">Register here</a>
+    </p>
+
+  </div>
+</div>
+{% endblock %}

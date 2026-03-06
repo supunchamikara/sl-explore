@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Edit — {{ attraction.name }} — SL·Explore{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:760px;">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="/admin" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Back to Admin
+    </a>
+    <div>
+      <h1 class="section-title mb-0">
+        <i class="bi bi-pencil-square me-2" style="color:var(--blue);"></i>Edit Attraction
+      </h1>
+      <p class="text-muted mb-0" style="font-size:.85rem;">ID #{{ attraction.id }}</p>
+    </div>
+  </div>
+
+  <form method="post" action="/attraction/{{ attraction.id }}/edit"
+        enctype="multipart/form-data" novalidate>
+
+    <!-- Basic Info -->
+    <div class="form-card">
+      <h5><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
+
+      <div class="mb-3">
+        <label for="name" class="form-label">Attraction Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ attraction.name }}" required />
+      </div>
+
+      <div class="mb-3">
+        <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+        <textarea class="form-control" id="description" name="description"
+                  rows="5" required>{{ attraction.description }}</textarea>
+      </div>
+    </div>
+
+    <!-- Location -->
+    <div class="form-card">
+      <h5><i class="bi bi-map me-2"></i>Location</h5>
+
+      <div class="row g-3 mb-2">
+        <div class="col-md-6">
+          <label for="province" class="form-label">Province <span class="text-danger">*</span></label>
+          <select class="form-select" id="province" name="province" required
+                  onchange="onProvinceChange(this)">
+            <option value="">Select Province</option>
+            {% for p in provinces %}
+              <option value="{{ p }}" {% if attraction.province == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="district" class="form-label">District <span class="text-danger">*</span></label>
+          <select class="form-select" id="district" name="district" required>
+            <option value="">Select District</option>
+            {% for d in districts_for_province %}
+              <option value="{{ d }}" {% if attraction.district == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- GPS -->
+    <div class="form-card">
+      <h5><i class="bi bi-pin-map me-2"></i>GPS Coordinates
+        <span class="text-muted fw-normal" style="font-size:.8rem;">(optional)</span>
+      </h5>
+
+      <div class="mb-3">
+        <button type="button" class="btn-gps" onclick="getLocation()">
+          <i class="bi bi-crosshair me-1"></i>Get Current Location
+        </button>
+        <div class="gps-status text-muted" id="gpsStatus"></div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="latitude" class="form-label">Latitude</label>
+          <input type="text" class="form-control" id="latitude" name="latitude"
+                 value="{{ attraction.latitude if attraction.latitude else '' }}" />
+        </div>
+        <div class="col-md-6">
+          <label for="longitude" class="form-label">Longitude</label>
+          <input type="text" class="form-control" id="longitude" name="longitude"
+                 value="{{ attraction.longitude if attraction.longitude else '' }}" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Images -->
+    <div class="form-card">
+      <h5><i class="bi bi-images me-2"></i>Photos</h5>
+
+      <!-- Existing images -->
+      {% if attraction.images %}
+      <p class="form-label mb-2">Current photos — check to delete:</p>
+      <div class="existing-images-grid mb-3">
+        {% for img in attraction.images %}
+        <div class="existing-img-item">
+          <img src="/static/{{ img.image_path }}" alt="Photo {{ loop.index }}" />
+          <label class="existing-img-delete">
+            <input type="checkbox" name="delete_image_ids" value="{{ img.id }}" />
+            <span class="delete-overlay"><i class="bi bi-trash-fill"></i> Delete</span>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Upload new -->
+      {% set slots = 4 - (attraction.images | length) %}
+      {% if slots > 0 %}
+      <label for="images" class="form-label">
+        Add new photos
+        <span class="text-muted fw-normal">(up to {{ slots }} more)</span>
+      </label>
+      <input type="file" class="form-control" id="images" name="images"
+             accept="image/*" multiple onchange="previewImages(this)" />
+      <div class="img-preview-strip mt-2" id="imgPreview"></div>
+      {% else %}
+      <p class="text-muted" style="font-size:.85rem;">
+        Maximum 4 photos reached. Delete existing photos to add new ones.
+      </p>
+      {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-check-lg me-1"></i>Save Changes
+      </button>
+      <a href="/admin" class="btn btn-outline-secondary px-4">Cancel</a>
+      <form method="post" action="/attraction/{{ attraction.id }}/delete" class="ms-auto"
+            onsubmit="return confirm('Permanently delete this attraction? This cannot be undone.')">
+        <button type="submit" class="btn btn-danger px-4">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </form>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const provincesDistricts = {{ provinces_districts_json | safe }};
+
+  function onProvinceChange(sel) {
+    const province = sel.value;
+    const distSelect = document.getElementById('district');
+    distSelect.innerHTML = '<option value="">Select District</option>';
+    if (province && provincesDistricts[province]) {
+      provincesDistricts[province].forEach(function(d) {
+        const opt = document.createElement('option');
+        opt.value = d; opt.textContent = d;
+        distSelect.appendChild(opt);
+      });
+      distSelect.disabled = false;
+    } else {
+      distSelect.disabled = true;
+    }
+    distSelect.value = '';
+  }
+
+  function getLocation() {
+    const status = document.getElementById('gpsStatus');
+    const btn = event.currentTarget;
+    if (!navigator.geolocation) {
+      status.textContent = 'Geolocation not supported.';
+      return;
+    }
+    btn.disabled = true;
+    status.textContent = 'Locating…';
+    status.style.color = 'var(--blue)';
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        document.getElementById('latitude').value  = pos.coords.latitude.toFixed(6);
+        document.getElementById('longitude').value = pos.coords.longitude.toFixed(6);
+        status.textContent = '✓ Location captured (±' + Math.round(pos.coords.accuracy) + ' m)';
+        status.style.color = '#137333';
+        btn.disabled = false;
+      },
+      function(err) {
+        status.textContent = 'Could not get location: ' + err.message;
+        status.style.color = '#d32f2f';
+        btn.disabled = false;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  function previewImages(input) {
+    const strip = document.getElementById('imgPreview');
+    strip.innerHTML = '';
+    Array.from(input.files).slice(0, 4).forEach(function(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        strip.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Highlight image when delete checkbox is checked
+  document.querySelectorAll('input[name="delete_image_ids"]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      const item = this.closest('.existing-img-item');
+      item.classList.toggle('marked-for-delete', this.checked);
+    });
+  });
+</script>
+{% endblock %}
