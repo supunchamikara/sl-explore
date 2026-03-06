@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 import shutil
 from pathlib import Path
@@ -18,7 +19,7 @@ from models import User, Attraction, AttractionImage, Comment
 from auth import hash_password, verify_password
 from data import PROVINCES_DISTRICTS
 
-UPLOAD_DIR = Path("static/uploads")
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "static/uploads"))
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 MAX_IMAGES = 4
 PER_PAGE = 9
@@ -60,7 +61,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan, title="Sri Lanka Tourist Attractions")
-app.add_middleware(SessionMiddleware, secret_key="sl-travel-secret-key-change-in-prod")
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "sl-travel-secret-key-change-in-prod"))
+# Mount uploads first (may be on a separate persistent volume)
+app.mount("/static/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
